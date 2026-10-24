@@ -175,6 +175,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
 .power-badges{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}.power-badge{font-size:9px;font-weight:800;letter-spacing:.02em;background:#0009;color:#ffe1bd;border:1px solid #ffffff44;border-radius:5px;padding:2px 4px}.power-trigger{cursor:pointer}.power-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.power-option{width:100%;text-align:left;padding:12px;margin-top:10px;border-radius:11px;border:1px solid #555;background:#222;color:#fff}.power-option[aria-pressed="true"]{border-color:var(--accent);background:#49301e}.power-option strong{display:block;margin-bottom:4px}.power-option small{display:block;line-height:1.4;color:#ddd}.active strong{flex-wrap:wrap;row-gap:0}.active-power-note{flex-basis:100%;white-space:normal;display:block;font-size:10px;line-height:1.3;color:#ffe1bd;font-weight:600;margin-top:3px}.modal-actions button:disabled{opacity:.4}
 .active{grid-template-columns:auto minmax(0,1fr) auto auto}.active:has(.safekeep-shield[hidden]){grid-template-columns:minmax(0,1fr) auto auto}.safekeep-shield{display:grid;place-items:center;width:31px;height:39px;padding:2px;border:0;background:transparent;color:#aaa;border-radius:8px;flex:none}.safekeep-shield[hidden]{display:none}.safekeep-shield svg{width:28px;height:34px;fill:#242424;stroke:currentColor;stroke-width:2;stroke-linejoin:round}.shield-check{fill:none;opacity:.4}.safekeep-shield.enabled{color:#ffd39b;filter:drop-shadow(0 0 5px #f09b58);animation:safekeepGlow 1.8s ease-in-out infinite alternate}.safekeep-shield.enabled svg{fill:#69401b}.safekeep-shield.enabled .shield-check{opacity:1}.score-row.with-thorns{grid-template-columns:minmax(0,1fr) 52px}.thorn-toggle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid #ffffff33;border-radius:9px;background:#0004;color:#ddd;padding:4px 2px;min-height:48px}.thorn-toggle svg{width:19px;height:19px}.thorn-toggle span{font-size:8px;font-weight:900}.thorn-toggle small{font-size:8px}.thorn-toggle.enabled{color:#ffe1b3;background:#49301e;border-color:#f09b58;box-shadow:inset 0 0 9px #f09b5844}.power-badges{gap:2px}.power-badge{font-size:8px}.active-power-note{font-size:9px}@keyframes safekeepGlow{from{filter:drop-shadow(0 0 3px #f09b58)}to{filter:drop-shadow(0 0 8px #ffd39b)}}@media(prefers-reduced-motion:reduce){.safekeep-shield.enabled{animation:none}}
 .score-row.with-bargain{grid-template-columns:minmax(0,1fr) 58px}.bargain-toggle{border:1px solid #a38cb7;background:#181125;color:#eedaff;border-radius:9px;font-size:8px;font-weight:900;padding:4px;line-height:1.4}.bargain-toggle svg{display:block;width:20px;height:20px;margin:0 auto 3px}.bargain-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.bargain-options button{min-height:72px;background:#251b30;color:#fff;border:1px solid #765d8e;border-radius:11px;padding:10px;font-weight:800}.bargain-options button small{display:block;font-size:11px;font-weight:400;margin-top:6px;color:#ddd}#bargainWake{background:#eee;color:#111}#bargainWake small{color:#333}
+.tile{grid-template-rows:minmax(0,1fr) auto}.tile-main{min-height:0}.score-row.with-thorns{grid-template-columns:minmax(0,1fr) 44px}.score-row.with-thorns.thorns-active{grid-template-columns:minmax(0,1fr) minmax(0,78px) 44px}.thorns-status{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;align-self:stretch;font-size:9px;font-weight:800;color:#ffe1bd;text-align:center;line-height:1.25;min-width:0}.thorns-status span{display:block}.thorn-toggle{min-height:42px}.bargain-transfer-label{position:fixed;z-index:50;color:#ffd39b;font-weight:900;font-size:26px;text-shadow:0 0 12px #ef8c39;pointer-events:none;transform:translate(-50%,-50%)}
 </style>
 </head>
 <body>
@@ -448,7 +449,23 @@ function resolveBargain(result){
  if(!owner||p.id!==bargainActiveId||owner.id===p.id||transitioning||state.lastFeeding?.complete)return;
  if(result==='wake'){$('bargainModal').hidden=true;$('wake').click();return;}
  const raw=$('bargainAmount').value.trim(),n=Number(raw);if(raw===''||!Number.isSafeInteger(n)||n<0){$('bargainError').textContent='Enter a nonnegative whole number.';return;}
- mutate(()=>applyBargain(owner,p,n,result));$('bargainModal').hidden=true;
+ const gain=Math.floor(n/2);
+ const origin=$('bargainPreview').getBoundingClientRect();
+ $('bargainModal').hidden=true;
+ if(result==='none'||gain===0){mutate(()=>applyBargain(owner,p,n,result));return;}
+ const target=result==='gloam'?document.querySelector(`.tile[data-player-id="${CSS.escape(owner.id)}"] .score.bank`):$('currentRisk');
+ const number=target?.querySelector('b'),startValue=result==='gloam'?owner.bank:n;
+ if(!target||!number){mutate(()=>applyBargain(owner,p,n,result));return;}
+ setTransition(true);
+ const riskNumber=$('currentRisk').querySelector('b');if(riskNumber)riskNumber.textContent=String(n);
+ number.textContent=String(startValue);
+ const duration=feastFX(origin,target.getBoundingClientRect(),gain,owner.id,target)||0;
+ let label=null;
+ if(duration){const center=centerOf(origin);label=el('div','bargain-transfer-label','+'+gain);label.style.left=center.x+'px';label.style.top=center.y+'px';$('fxLayer').append(label);
+ const begin=performance.now()+Math.min(400,duration*.35);
+ const tally=now=>{const progress=Math.max(0,Math.min(1,(now-begin)/Math.max(1,duration-400)));number.textContent=String(startValue+Math.floor(gain*progress));if(progress<1)requestAnimationFrame(tally)};requestAnimationFrame(tally);
+ }
+ setTimeout(()=>{if(label)label.remove();mutate(()=>applyBargain(owner,p,n,result));setTransition(false);},duration);
 }
 $('bargainAmount').addEventListener('input',previewBargain);
 for(const [id,result]of [['bargainGloam','gloam'],['bargainActive','active'],['bargainNone','none'],['bargainWake','wake']])$(id).addEventListener('click',()=>resolveBargain(result));
@@ -462,7 +479,7 @@ function render(){
     tile.style.background=d[3].bg;
     tile.style.color=d[3].fg;
     const main=el('div','tile-main'); main.setAttribute('aria-label','Player '+p.name);
-    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); const badges=el('div','power-badges');if(p.demon==='briarvex'&&p.feastThorns)badges.append(el('span','power-badge','THORNS · FEAST 20+ · +10'));if(p.safekeep)badges.append(el('span','power-badge','SAFEKEEP · '+p.safekeep.recorded));if(badges.childNodes.length)main.append(badges);tile.append(main);
+    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); const badges=el('div','power-badges');if(p.safekeep)badges.append(el('span','power-badge','SAFEKEEP · '+p.safekeep.recorded));if(badges.childNodes.length)main.append(badges);tile.append(main);
     if(p.id===state.selected) tile.append(el('div','selected-dot'));
     if(state.first100===p.id){const mark=el('div','first-mark','🔥 FIRST TO 100');tile.append(mark);}
     const scores=el('div','score-row');
@@ -470,7 +487,7 @@ function render(){
       const btn=el('button','score '+key); btn.type='button'; btn.dataset.scoreType=key; btn.innerHTML=`<span>${txt}</span><b>${p[key]}</b>`; btn.addEventListener('click',e=>{e.stopPropagation(); openEdit(p.id,key)}); scores.append(btn);
     }
     if(p.demon==='briarvex'){
- scores.classList.add('with-thorns');const thorn=el('button','thorn-toggle'+(p.feastThorns?' enabled':''));thorn.type='button';thorn.innerHTML=motifSvg('briarvex')+'<span>THORNS</span><small>20+ / +10</small>';thorn.setAttribute('aria-label','Feast Thorns for '+p.name);thorn.setAttribute('aria-pressed',String(!!p.feastThorns));thorn.title='Feast Thorns: require 20 Corruption and bank +10. Toggle off when removed.';thorn.disabled=!!state.lastFeeding?.complete;thorn.addEventListener('click',()=>{if(transitioning||state.lastFeeding?.complete)return;mutate(()=>{p.feastThorns=!p.feastThorns})});scores.append(thorn);
+ scores.classList.add('with-thorns');if(p.feastThorns){scores.classList.add('thorns-active');const info=el('div','thorns-status');info.innerHTML='<span>FEAST 20+</span><span>+10 BONUS</span>';scores.append(info);}const thorn=el('button','thorn-toggle'+(p.feastThorns?' enabled':''));thorn.type='button';thorn.innerHTML=motifSvg('briarvex')+'<span>THORNS</span><small>20+ / +10</small>';thorn.setAttribute('aria-label','Feast Thorns for '+p.name);thorn.setAttribute('aria-pressed',String(!!p.feastThorns));thorn.title='Feast Thorns: require 20 Corruption and bank +10. Toggle off when removed.';thorn.disabled=!!state.lastFeeding?.complete;thorn.addEventListener('click',()=>{if(transitioning||state.lastFeeding?.complete)return;mutate(()=>{p.feastThorns=!p.feastThorns})});scores.append(thorn);
  }if(p.demon==='gloam'){
  scores.classList.add('with-bargain');const bargain=el('button','bargain-toggle');bargain.type='button';bargain.innerHTML=motifSvg('gloam')+'DARK<br>BARGAIN';bargain.setAttribute('aria-label','Dark Bargain for '+p.name);bargain.disabled=p.id===state.selected||!!state.lastFeeding?.complete;bargain.addEventListener('click',()=>openBargain(p.id));scores.append(bargain);
  }tile.append(scores); roster.append(tile);
@@ -500,7 +517,7 @@ function pulseFX(amount){
   const label=el('div','pulse-float','+'+amount);label.style.left=center.x+'px';label.style.top=(center.y-12)+'px';layer.append(label);
   setTimeout(()=>{ring.remove();label.remove();risk.classList.remove('pulse-pop')},800);
 }
-function feastFX(from,to,amount,playerId){
+function feastFX(from,to,amount,playerId,targetElement=null){
   if(!from||!to)return;
   const start=centerOf(from),end=centerOf(to),layer=$('fxLayer');
   const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -520,7 +537,7 @@ function feastFX(from,to,amount,playerId){
     anim.onfinish=()=>orb.remove();
   }
   setTimeout(()=>{
-    const dest=document.querySelector(`.tile[data-player-id="${CSS.escape(playerId)}"] .score.bank`);
+    const dest=targetElement||document.querySelector(`.tile[data-player-id="${CSS.escape(playerId)}"] .score.bank`);
     if(dest){dest.classList.remove('bank-absorb');void dest.offsetWidth;dest.classList.add('bank-absorb');setTimeout(()=>dest.classList.remove('bank-absorb'),700)}
   },duration-100);
   return duration+16*22+80;
@@ -603,4 +620,5 @@ else{setTimeout(()=>{if(!pendingInstall&&!standalone())status.textContent='Insta
 })();</script>
 </body>
 </html>
+
 
