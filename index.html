@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>NIGHTMARE  Scorekeeper RC1</title>
+<title>NIGHTMARE Scorekeeper</title>
+<link rel="manifest" href="./manifest.webmanifest?v=icon2">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png?v=icon2">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png?v=icon2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NIGHTMARE">
 <style>
 :root{
   color-scheme:dark;
@@ -520,5 +525,6 @@ fit(); window.addEventListener('resize',fit,{passive:true}); if(window.visualVie
 render(); save();
 })();
 </script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
 </body>
 </html>
