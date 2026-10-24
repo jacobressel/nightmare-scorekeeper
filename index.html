@@ -177,6 +177,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
 .score-row.with-bargain{grid-template-columns:minmax(0,1fr) 58px}.bargain-toggle{border:1px solid #a38cb7;background:#181125;color:#eedaff;border-radius:9px;font-size:8px;font-weight:900;padding:4px;line-height:1.4}.bargain-toggle svg{display:block;width:20px;height:20px;margin:0 auto 3px}.bargain-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.bargain-options button{min-height:72px;background:#251b30;color:#fff;border:1px solid #765d8e;border-radius:11px;padding:10px;font-weight:800}.bargain-options button small{display:block;font-size:11px;font-weight:400;margin-top:6px;color:#ddd}#bargainWake{background:#eee;color:#111}#bargainWake small{color:#333}
 .tile{grid-template-rows:minmax(0,1fr) auto}.tile-main{min-height:0}.score-row.with-thorns{grid-template-columns:minmax(0,1fr) 44px}.score-row.with-thorns.thorns-active{grid-template-columns:minmax(0,1fr) minmax(0,78px) 44px}.thorns-status{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;align-self:stretch;font-size:9px;font-weight:800;color:#ffe1bd;text-align:center;line-height:1.25;min-width:0}.thorns-status span{display:block}.thorn-toggle{min-height:42px}.bargain-transfer-label{position:fixed;z-index:50;color:#ffd39b;font-weight:900;font-size:26px;text-shadow:0 0 12px #ef8c39;pointer-events:none;transform:translate(-50%,-50%)}
 .corruption-shard{position:fixed;pointer-events:none;width:10px;height:15px;background:#f4ad68;clip-path:polygon(0 0,100% 24%,45% 100%);box-shadow:0 0 8px #f09b58}.corruption-remnant{position:fixed;pointer-events:none;color:#ffd2a0;font-size:28px;font-weight:900;transform:translate(-50%,-50%);text-shadow:0 0 10px #ef8c39}
+.safekeep-shield{width:40px;height:46px;padding:0}.safekeep-shield svg{width:36px;height:43px}.shield-word{fill:currentColor;stroke:none;font-family:system-ui,sans-serif;font-size:8.5px;font-weight:900;letter-spacing:0}@media(max-width:380px){.safekeep-shield{width:32px;height:42px}.safekeep-shield svg{width:30px;height:38px}}
 </style>
 </head>
 <body>
@@ -193,7 +194,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
   <section class="bottom">
     <div class="turn-divider" aria-label="Active turn section">ACTIVE TURN</div>
     <div class="active">
-      <button id="safekeepShield" class="safekeep-shield" type="button" aria-label="Activate Safekeep" aria-pressed="false"><svg viewBox="0 0 32 38" aria-hidden="true"><path d="M16 2 29 7v11c0 9-8 15-13 18C11 33 3 27 3 18V7Z"/><path class="shield-check" d="m9 18 5 5 10-11"/></svg></button><strong id="selected"></strong>
+      <button id="safekeepShield" class="safekeep-shield" type="button" aria-label="Activate Safekeep" aria-pressed="false"><svg viewBox="0 0 32 38" aria-hidden="true"><path d="M16 2 29 7v11c0 9-8 15-13 18C11 33 3 27 3 18V7Z"/><text class="shield-word" x="16" y="15" text-anchor="middle" textLength="22" lengthAdjust="spacingAndGlyphs">SAFE</text><text class="shield-word" x="16" y="24" text-anchor="middle" textLength="18" lengthAdjust="spacingAndGlyphs">KEEP</text></svg></button><strong id="selected"></strong>
       <div class="current-risk" id="currentRisk"></div>
       <button id="skip" class="skip-btn" type="button">Skip Player</button>
     </div>
@@ -583,9 +584,11 @@ async function safekeepWakeFX(p){
  const bank=document.querySelector(`.tile[data-player-id="${CSS.escape(p.id)}"] .score.bank`),bankNumber=bank?.querySelector('b');
  const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
  if(reduced||!bank||!riskNumber||!bankNumber)return;
+ // First destroy the lost share, keeping the protected share visible.
+ if(lost>0){const rect=riskNumber.getBoundingClientRect();riskNumber.textContent=String(recovered);await shatterCorruption(lost,{left:rect.left,top:rect.top-25,width:rect.width,height:rect.height});}
+ // Then carry the protected share to the bank using the Feast stream.
  const startBank=p.bank,duration=amount>0?(feastFX(risk.getBoundingClientRect(),bank.getBoundingClientRect(),amount,p.id,bank)||0):0;
- if(duration){const begin=performance.now();await new Promise(resolve=>{const count=now=>{const progress=Math.min(1,(now-begin)/duration);bankNumber.textContent=String(startBank+Math.floor(amount*progress));riskNumber.textContent=String(original-Math.floor(recovered*progress));if(progress<1)requestAnimationFrame(count);else resolve()};requestAnimationFrame(count)});}
- if(lost>0){const rect=riskNumber.getBoundingClientRect();riskNumber.style.visibility='hidden';await shatterCorruption(lost,rect);}
+ if(duration){const begin=performance.now();await new Promise(resolve=>{const count=now=>{const progress=Math.min(1,(now-begin)/duration);bankNumber.textContent=String(startBank+Math.floor(amount*progress));riskNumber.textContent=String(recovered-Math.floor(recovered*progress));if(progress<1)requestAnimationFrame(count);else resolve()};requestAnimationFrame(count)});}
 }
 $('wake').addEventListener('click',async()=>{
  if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
@@ -640,6 +643,7 @@ else{setTimeout(()=>{if(!pendingInstall&&!standalone())status.textContent='Insta
 })();</script>
 </body>
 </html>
+
 
 
 
