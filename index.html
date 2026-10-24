@@ -176,6 +176,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
 .active{grid-template-columns:auto minmax(0,1fr) auto auto}.active:has(.safekeep-shield[hidden]){grid-template-columns:minmax(0,1fr) auto auto}.safekeep-shield{display:grid;place-items:center;width:31px;height:39px;padding:2px;border:0;background:transparent;color:#aaa;border-radius:8px;flex:none}.safekeep-shield[hidden]{display:none}.safekeep-shield svg{width:28px;height:34px;fill:#242424;stroke:currentColor;stroke-width:2;stroke-linejoin:round}.shield-check{fill:none;opacity:.4}.safekeep-shield.enabled{color:#ffd39b;filter:drop-shadow(0 0 5px #f09b58);animation:safekeepGlow 1.8s ease-in-out infinite alternate}.safekeep-shield.enabled svg{fill:#69401b}.safekeep-shield.enabled .shield-check{opacity:1}.score-row.with-thorns{grid-template-columns:minmax(0,1fr) 52px}.thorn-toggle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid #ffffff33;border-radius:9px;background:#0004;color:#ddd;padding:4px 2px;min-height:48px}.thorn-toggle svg{width:19px;height:19px}.thorn-toggle span{font-size:8px;font-weight:900}.thorn-toggle small{font-size:8px}.thorn-toggle.enabled{color:#ffe1b3;background:#49301e;border-color:#f09b58;box-shadow:inset 0 0 9px #f09b5844}.power-badges{gap:2px}.power-badge{font-size:8px}.active-power-note{font-size:9px}@keyframes safekeepGlow{from{filter:drop-shadow(0 0 3px #f09b58)}to{filter:drop-shadow(0 0 8px #ffd39b)}}@media(prefers-reduced-motion:reduce){.safekeep-shield.enabled{animation:none}}
 .score-row.with-bargain{grid-template-columns:minmax(0,1fr) 58px}.bargain-toggle{border:1px solid #a38cb7;background:#181125;color:#eedaff;border-radius:9px;font-size:8px;font-weight:900;padding:4px;line-height:1.4}.bargain-toggle svg{display:block;width:20px;height:20px;margin:0 auto 3px}.bargain-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.bargain-options button{min-height:72px;background:#251b30;color:#fff;border:1px solid #765d8e;border-radius:11px;padding:10px;font-weight:800}.bargain-options button small{display:block;font-size:11px;font-weight:400;margin-top:6px;color:#ddd}#bargainWake{background:#eee;color:#111}#bargainWake small{color:#333}
 .tile{grid-template-rows:minmax(0,1fr) auto}.tile-main{min-height:0}.score-row.with-thorns{grid-template-columns:minmax(0,1fr) 44px}.score-row.with-thorns.thorns-active{grid-template-columns:minmax(0,1fr) minmax(0,78px) 44px}.thorns-status{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;align-self:stretch;font-size:9px;font-weight:800;color:#ffe1bd;text-align:center;line-height:1.25;min-width:0}.thorns-status span{display:block}.thorn-toggle{min-height:42px}.bargain-transfer-label{position:fixed;z-index:50;color:#ffd39b;font-weight:900;font-size:26px;text-shadow:0 0 12px #ef8c39;pointer-events:none;transform:translate(-50%,-50%)}
+.corruption-shard{position:fixed;pointer-events:none;width:10px;height:15px;background:#f4ad68;clip-path:polygon(0 0,100% 24%,45% 100%);box-shadow:0 0 8px #f09b58}.corruption-remnant{position:fixed;pointer-events:none;color:#ffd2a0;font-size:28px;font-weight:900;transform:translate(-50%,-50%);text-shadow:0 0 10px #ef8c39}
 </style>
 </head>
 <body>
@@ -420,11 +421,11 @@ function feastBlock(p){
  if(state.lastFeeding?.phase==='challenge'&&p.bank<top().bank&&p.bank+p.risk+feastBonus(p)===top().bank)return 'A tied Feast is not allowed. Stream again!';
  return '';
 }
-function wakeBank(p){return p.safekeep?Math.floor(p.safekeep.recorded/2)+feastBonus(p):0}
+function wakeBank(p){return p.safekeep?Math.floor(p.risk/2)+feastBonus(p):0}
 function toggleSafekeep(){
  if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
  const p=active();if(p.demon==='gloam')return;
- mutate(()=>{p.safekeep=p.safekeep?null:{recorded:p.risk}});
+ mutate(()=>{p.safekeep=p.safekeep?null:{active:true}});
 }
 $('safekeepShield').addEventListener('click',toggleSafekeep);
 let bargainOwnerId=null,bargainActiveId=null;
@@ -479,7 +480,7 @@ function render(){
     tile.style.background=d[3].bg;
     tile.style.color=d[3].fg;
     const main=el('div','tile-main'); main.setAttribute('aria-label','Player '+p.name);
-    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); const badges=el('div','power-badges');if(p.safekeep)badges.append(el('span','power-badge','SAFEKEEP · '+p.safekeep.recorded));if(badges.childNodes.length)main.append(badges);tile.append(main);
+    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); const badges=el('div','power-badges');if(p.safekeep)badges.append(el('span','power-badge','SAFEKEEP'));if(badges.childNodes.length)main.append(badges);tile.append(main);
     if(p.id===state.selected) tile.append(el('div','selected-dot'));
     if(state.first100===p.id){const mark=el('div','first-mark','🔥 FIRST TO 100');tile.append(mark);}
     const scores=el('div','score-row');
@@ -495,8 +496,8 @@ function render(){
   const p=active(), lead=top();
   document.querySelector('.active').style.setProperty('--demon-color',p.demon==='ossik'?'#F3C64C':desc(p.demon)[3].bg);
   document.querySelector('.active').style.setProperty('--demon-fill',p.demon==='ossik'?'rgba(232,177,28,.48)':'color-mix(in srgb, var(--demon-color) 30%, transparent)');
-  $('selected').replaceChildren();const activeIcon=el('span','glyph');activeIcon.innerHTML=motifSvg(p.demon);$('selected').append(activeIcon,document.createTextNode(' '+p.name));if(p.feastThorns&&p.demon==='briarvex'||p.safekeep){const notes=[];if(p.feastThorns&&p.demon==='briarvex')notes.push('Thorns · Feast 20+ · +10');if(p.safekeep)notes.push('Safekeep '+p.safekeep.recorded+' · WAKE banks '+wakeBank(p));$('selected').append(el('small','active-power-note',notes.join(' / ')));}$('currentRisk').replaceChildren(document.createTextNode('CORRUPTION '),el('b','',String(p.risk)));$('currentRisk').setAttribute('role','button');$('currentRisk').setAttribute('tabindex','0');$('currentRisk').setAttribute('aria-label','Edit current player Corruption');
-  const finished=!!state.lastFeeding?.complete;const shield=$('safekeepShield');shield.hidden=p.demon==='gloam';shield.disabled=finished;shield.classList.toggle('enabled',!!p.safekeep);shield.setAttribute('aria-pressed',String(!!p.safekeep));shield.setAttribute('aria-label',p.safekeep?'Cancel Safekeep':'Activate Safekeep');shield.title=p.safekeep?'Safekeep active · recorded '+p.safekeep.recorded+' · WAKE banks '+wakeBank(p):'Safekeep · record current Corruption before one final Stream'; $('feast').disabled=p.risk===0||finished||!!feastBlock(p);$('feast').title=feastBlock(p)||('Bank '+(p.risk+feastBonus(p))+' Energy');$('wake').title=p.safekeep?'Safekeep: bank '+wakeBank(p)+' Energy, then end turn':'Lose unbanked Corruption and end turn'; $('wake').disabled=finished; $('skip').disabled=finished; $('pulseBtn').disabled=finished; $('undo').disabled=!hist.length;
+  $('selected').replaceChildren();const activeIcon=el('span','glyph');activeIcon.innerHTML=motifSvg(p.demon);$('selected').append(activeIcon,document.createTextNode(' '+p.name));if(p.feastThorns&&p.demon==='briarvex'||p.safekeep){const notes=[];if(p.feastThorns&&p.demon==='briarvex')notes.push('Thorns · Feast 20+ · +10');if(p.safekeep)notes.push('Safekeep · WAKE banks '+wakeBank(p));$('selected').append(el('small','active-power-note',notes.join(' / ')));}$('currentRisk').replaceChildren(document.createTextNode('CORRUPTION '),el('b','',String(p.risk)));$('currentRisk').setAttribute('role','button');$('currentRisk').setAttribute('tabindex','0');$('currentRisk').setAttribute('aria-label','Edit current player Corruption');
+  const finished=!!state.lastFeeding?.complete;const shield=$('safekeepShield');shield.hidden=p.demon==='gloam';shield.disabled=finished;shield.classList.toggle('enabled',!!p.safekeep);shield.setAttribute('aria-pressed',String(!!p.safekeep));shield.setAttribute('aria-label',p.safekeep?'Cancel Safekeep':'Activate Safekeep');shield.title=p.safekeep?'Safekeep active · WAKE banks '+wakeBank(p):'Safekeep · bank half your current Corruption on WAKE'; $('feast').disabled=p.risk===0||finished||!!feastBlock(p);$('feast').title=feastBlock(p)||('Bank '+(p.risk+feastBonus(p))+' Energy');$('wake').title=p.safekeep?'Safekeep: bank '+wakeBank(p)+' Energy, then end turn':'Lose unbanked Corruption and end turn'; $('wake').disabled=finished; $('skip').disabled=finished; $('pulseBtn').disabled=finished; $('undo').disabled=!hist.length;
   const status=$('status'); status.replaceChildren();
   const lf=state.lastFeeding; const trigger=state.players.find(p=>p.id===lf?.trigger);
   const main=el('strong','',lf?.complete?'LAST FEEDING COMPLETE':lf?(lf.phase==='pending'?`${trigger?.name||'Gloam'} triggered Last Feeding`: `🔥 LAST FEEDING · ${lf.queue.length} turn${lf.queue.length===1?'':'s'} left`):(lead.bank?`${lead.name} leads · ${lead.bank}`:'Race to 100'));
@@ -568,18 +569,37 @@ $('feast').addEventListener('click',()=>{
     setTransition(false);
   },duration);
 });
-$('wake').addEventListener('click',()=>{
-  if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
-  const currentId=active().id;
-  setTransition(true);
-  const flash=$('wakeFlash');flash.hidden=false;flash.classList.remove('flashing');void flash.offsetWidth;flash.classList.add('flashing');
-  const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  setTimeout(()=>{
-    state.pulse='0';$('pulse').value='0';
-    mutate(()=>{const p=state.players.find(x=>x.id===currentId);if(p){p.bank+=wakeBank(p);p.risk=0;}advanceTurn(currentId);},'WAKE');
-    flash.classList.remove('flashing');flash.hidden=true;
-    setTransition(false);
-  },reduced?100:400);
+function shatterCorruption(amount,rect){
+ if(amount<=0)return Promise.resolve();
+ const c=centerOf(rect),layer=$('fxLayer');
+ const ghost=el('div','corruption-remnant',String(amount));ghost.style.left=c.x+'px';ghost.style.top=c.y+'px';layer.append(ghost);
+ ghost.animate([{opacity:1,transform:'translate(-50%,-50%) scale(1)'},{opacity:0,transform:'translate(-50%,-70%) scale(1.25)',filter:'blur(5px)'}],{duration:650,fill:'forwards'});
+ for(let i=0;i<18;i++){const shard=el('div','corruption-shard');shard.style.left=(c.x+(i%5-2)*5)+'px';shard.style.top=(c.y+(i%3-1)*5)+'px';layer.append(shard);const angle=i*Math.PI*2/18,range=28+(i*13)%60;const animation=shard.animate([{transform:'translate(-50%,-50%) rotate(0deg)',opacity:1},{transform:`translate(${Math.cos(angle)*range}px,${Math.sin(angle)*range+26}px) rotate(${i*41}deg) scale(.1)`,opacity:0}],{duration:650+(i%4)*35,easing:'ease-out',fill:'forwards'});animation.onfinish=()=>shard.remove();}
+ return new Promise(resolve=>setTimeout(()=>{ghost.remove();resolve()},800));
+}
+async function safekeepWakeFX(p){
+ const original=p.risk,recovered=Math.floor(original/2),lost=original-recovered,amount=wakeBank(p);
+ const risk=$('currentRisk'),riskNumber=risk.querySelector('b');
+ const bank=document.querySelector(`.tile[data-player-id="${CSS.escape(p.id)}"] .score.bank`),bankNumber=bank?.querySelector('b');
+ const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ if(reduced||!bank||!riskNumber||!bankNumber)return;
+ const startBank=p.bank,duration=amount>0?(feastFX(risk.getBoundingClientRect(),bank.getBoundingClientRect(),amount,p.id,bank)||0):0;
+ if(duration){const begin=performance.now();await new Promise(resolve=>{const count=now=>{const progress=Math.min(1,(now-begin)/duration);bankNumber.textContent=String(startBank+Math.floor(amount*progress));riskNumber.textContent=String(original-Math.floor(recovered*progress));if(progress<1)requestAnimationFrame(count);else resolve()};requestAnimationFrame(count)});}
+ if(lost>0){const rect=riskNumber.getBoundingClientRect();riskNumber.style.visibility='hidden';await shatterCorruption(lost,rect);}
+}
+$('wake').addEventListener('click',async()=>{
+ if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
+ const p=active(),currentId=p.id;
+ setTransition(true);
+ const flash=$('wakeFlash');flash.hidden=false;flash.classList.remove('flashing');void flash.offsetWidth;flash.classList.add('flashing');
+ const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ await new Promise(resolve=>setTimeout(resolve,reduced?100:400));
+ flash.classList.remove('flashing');flash.hidden=true;
+ try{if(p.safekeep)await safekeepWakeFX(p);}finally{
+ state.pulse='0';$('pulse').value='0';
+ mutate(()=>{const player=state.players.find(x=>x.id===currentId);if(player){player.bank+=wakeBank(player);player.risk=0;}advanceTurn(currentId);},'WAKE');
+ setTransition(false);
+ }
 });
 $('skip').addEventListener('click',()=>{if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;const p=active();const currentId=p.id; mutate(()=>{advanceTurn(currentId);}, 'Skipped to next player')});
 $('undo').addEventListener('click',undo);
@@ -620,5 +640,6 @@ else{setTimeout(()=>{if(!pendingInstall&&!standalone())status.textContent='Insta
 })();</script>
 </body>
 </html>
+
 
 
