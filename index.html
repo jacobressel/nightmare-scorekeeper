@@ -191,6 +191,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
 #playerModal>.modal{max-height:calc(var(--usable-height) - 28px - env(safe-area-inset-top))}
 .wake-flash.flashing{animation:wakeShellLong 1200ms linear both}.wake-flash.flashing::before{animation:wakeBackingLong 1200ms linear both}.wake-flash.flashing .wake-fracture{animation:radialCrackLong 1200ms linear both;animation-delay:var(--lag)}.wake-flash.flashing .impact{animation:impactFlash 1200ms linear both}.wake-flash.flashing .ice-plate,.wake-flash.flashing .ice-splinter{animation:glassFlightLong calc(1200ms - var(--delay)) cubic-bezier(.25,.05,.65,1) var(--delay) both}@keyframes wakeShellLong{0%,96%{opacity:1}100%{opacity:0}}@keyframes wakeBackingLong{0%,9%{opacity:1}21%,100%{opacity:0}}@keyframes radialCrackLong{0%{stroke-dashoffset:100;opacity:1}12%{stroke-dashoffset:0;opacity:1}25%,100%{stroke-dashoffset:0;opacity:0}}@keyframes glassFlightLong{0%,8%{opacity:1;stroke:transparent;transform:translate(0,0) rotate(0deg) rotateY(0deg) rotateX(0deg) scale(1)}18%{opacity:1;stroke:#101010;transform:translate(calc(var(--dx)*.035),calc(var(--dy)*.035)) rotate(calc(var(--rot)*.08)) scale(.99)}48%{opacity:1;stroke:#101010;transform:translate(calc(var(--dx)*.32),calc(var(--dy)*.32)) rotate(calc(var(--rot)*.35)) rotateY(calc(var(--flip)*.25)) scale(.94)}86%{opacity:1;transform:translate(calc(var(--dx)*.95),calc(var(--dy)*.95)) rotate(var(--rot)) rotateY(calc(var(--flip)*.65)) scale(.85)}100%{opacity:1;transform:translate(calc(var(--dx)*1.25),calc(var(--dy)*1.25)) rotate(var(--rot)) rotateY(var(--flip)) rotateX(var(--tilt)) scale(.8)}}.corruption-smoke{position:fixed;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle,#f0c5a099 0%,#a5a0a088 35%,#6b606055 58%,transparent 75%);filter:blur(4px);pointer-events:none;transform:translate(-50%,-50%)}
 .wake-flash .wake-fracture{stroke-width:1.45}.wake-flash .glass-web-crack{stroke-width:.8;stroke:#222}.wake-flash.flashing .wake-fracture{animation-name:glassWebCrack}@keyframes glassWebCrack{0%{stroke-dashoffset:100;opacity:0}3%{opacity:1}14%{stroke-dashoffset:0;opacity:1}24%{opacity:.95}36%,100%{stroke-dashoffset:0;opacity:0}}
+.current-risk b{display:inline-block;min-width:2ch;text-align:center}.wake-flash.flashing::before{animation:none;opacity:0}.wake-flash.flashing .wake-fracture{animation-delay:0ms}@keyframes glassWebCrack{0%,14%{stroke-dashoffset:0;opacity:1}24%{opacity:.95}36%,100%{stroke-dashoffset:0;opacity:0}}
 </style>
 </head>
 <body>
@@ -475,13 +476,13 @@ function resolveBargain(result){
  const number=target?.querySelector('b'),startValue=result==='gloam'?owner.bank:n;
  if(!target||!number){mutate(()=>applyBargain(owner,p,n,result));return;}
  setTransition(true);
- const riskNumber=$('currentRisk').querySelector('b');if(riskNumber)riskNumber.textContent=String(n);
- number.textContent=String(startValue);
+ const riskNumber=$('currentRisk').querySelector('b');if(riskNumber)riskNumber.textContent=String(n).padStart(2,'0');
+ number.textContent=result==='gloam'?String(startValue):String(startValue).padStart(2,'0');
  const duration=feastFX(origin,target.getBoundingClientRect(),gain,owner.id,target)||0;
  let label=null;
  if(duration){const center=centerOf(origin);label=el('div','bargain-transfer-label','+'+gain);label.style.left=center.x+'px';label.style.top=center.y+'px';$('fxLayer').append(label);
  const begin=performance.now()+Math.min(400,duration*.35);
- const tally=now=>{const progress=Math.max(0,Math.min(1,(now-begin)/Math.max(1,duration-400)));number.textContent=String(startValue+Math.floor(gain*progress));if(progress<1)requestAnimationFrame(tally)};requestAnimationFrame(tally);
+ const tally=now=>{const progress=Math.max(0,Math.min(1,(now-begin)/Math.max(1,duration-400)));number.textContent=result==='gloam'?String(startValue+Math.floor(gain*progress)):String(startValue+Math.floor(gain*progress)).padStart(2,'0');if(progress<1)requestAnimationFrame(tally)};requestAnimationFrame(tally);
  }
  setTimeout(()=>{if(label)label.remove();mutate(()=>applyBargain(owner,p,n,result));setTransition(false);},duration);
 }
@@ -513,7 +514,7 @@ function render(){
   const p=active(), lead=top();
   document.querySelector('.active').style.setProperty('--demon-color',p.demon==='ossik'?'#F3C64C':desc(p.demon)[3].bg);
   document.querySelector('.active').style.setProperty('--demon-fill',p.demon==='ossik'?'rgba(232,177,28,.48)':'color-mix(in srgb, var(--demon-color) 30%, transparent)');
-  $('selected').replaceChildren();const activeIcon=el('span','glyph');activeIcon.innerHTML=motifSvg(p.demon);$('selected').append(activeIcon,document.createTextNode(' '+p.name));if(p.safekeep){const notes=[];notes.push('Safekeep · WAKE banks '+wakeBank(p));$('selected').append(el('small','active-power-note',notes.join(' / ')));}$('currentRisk').replaceChildren(document.createTextNode('CORRUPTION '),el('b','',String(p.risk)));$('currentRisk').setAttribute('role','button');$('currentRisk').setAttribute('tabindex','0');$('currentRisk').setAttribute('aria-label','Edit current player Corruption');
+  $('selected').replaceChildren();const activeIcon=el('span','glyph');activeIcon.innerHTML=motifSvg(p.demon);$('selected').append(activeIcon,document.createTextNode(' '+p.name));if(p.safekeep){const notes=[];notes.push('Safekeep · WAKE banks '+wakeBank(p));$('selected').append(el('small','active-power-note',notes.join(' / ')));}$('currentRisk').replaceChildren(document.createTextNode('CORRUPTION '),el('b','',String(p.risk).padStart(2,'0')));$('currentRisk').setAttribute('role','button');$('currentRisk').setAttribute('tabindex','0');$('currentRisk').setAttribute('aria-label','Edit current player Corruption');
   const finished=!!state.lastFeeding?.complete;const shield=$('safekeepShield');shield.hidden=p.demon==='gloam';shield.disabled=finished;shield.classList.toggle('enabled',!!p.safekeep);shield.setAttribute('aria-pressed',String(!!p.safekeep));shield.setAttribute('aria-label',p.safekeep?'Cancel Safekeep':'Activate Safekeep');shield.title=p.safekeep?'Safekeep active · WAKE banks '+wakeBank(p):'Safekeep · bank half your current Corruption on WAKE'; $('feast').disabled=p.risk===0||finished||!!feastBlock(p);$('feast').title=feastBlock(p)||('Bank '+(p.risk+feastBonus(p))+' Energy');$('wake').title=p.safekeep?'Safekeep: bank '+wakeBank(p)+' Energy, then end turn':'Lose unbanked Corruption and end turn'; $('wake').disabled=finished; $('skip').disabled=finished; $('pulseBtn').disabled=finished; $('undo').disabled=!hist.length;
   const status=$('status'); status.replaceChildren();
   const lf=state.lastFeeding; const trigger=state.players.find(p=>p.id===lf?.trigger);
@@ -614,7 +615,7 @@ async function smokeCorruption(p,targetValue,onValue=null){
  const number=$('currentRisk').querySelector('b'),rect=number.getBoundingClientRect(),center=centerOf(rect),half=targetValue,layer=$('fxLayer');
  number.animate([{opacity:1,filter:'blur(0px)',transform:'scale(1)'},{opacity:0,filter:'blur(7px)',transform:'scale(1.3)'}],{duration:280,easing:'ease-out'});
  const puffs=[];for(let i=0;i<14;i++){const puff=el('div','corruption-smoke');puff.style.left=center.x+'px';puff.style.top=center.y+'px';layer.append(puff);puffs.push(puff);puff.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.4)'},{opacity:.9,offset:.2,transform:'translate(-50%,-70%) scale(1.3)'},{opacity:0,transform:`translate(${(i%2?1:-1)*(15+i*3)}px,${-40-(i%5)*12}px) scale(2.6)`}],{duration:700,delay:i*10,easing:'ease-out',fill:'forwards'});}
- await new Promise(resolve=>setTimeout(resolve,260));number.textContent=String(half);if(onValue)onValue();number.animate([{opacity:0,filter:'blur(5px)',transform:'scale(1.2)'},{opacity:1,filter:'blur(0)',transform:'scale(1)'}],{duration:350,easing:'ease-out'});
+ await new Promise(resolve=>setTimeout(resolve,260));number.textContent=String(half).padStart(2,'0');if(onValue)onValue();number.animate([{opacity:0,filter:'blur(5px)',transform:'scale(1.2)'},{opacity:1,filter:'blur(0)',transform:'scale(1)'}],{duration:350,easing:'ease-out'});
  await new Promise(resolve=>setTimeout(resolve,600));puffs.forEach(puff=>puff.remove());
 }
 async function safekeepWakeFX(p){
@@ -624,10 +625,10 @@ async function safekeepWakeFX(p){
  const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
  if(reduced||!bank||!riskNumber||!bankNumber)return;
  // The fracture has already cleared and smoked the total down to its protected half.
- riskNumber.textContent=String(recovered);
+ riskNumber.textContent=String(recovered).padStart(2,'0');
  // Then carry the protected share to the bank using the Feast stream.
  const startBank=p.bank,duration=amount>0?(feastFX(risk.getBoundingClientRect(),bank.getBoundingClientRect(),amount,p.id,bank)||0):0;
- if(duration){const begin=performance.now();await new Promise(resolve=>{const count=now=>{const progress=Math.min(1,(now-begin)/duration);bankNumber.textContent=String(startBank+Math.floor(amount*progress));riskNumber.textContent=String(recovered-Math.floor(recovered*progress));if(progress<1)requestAnimationFrame(count);else resolve()};requestAnimationFrame(count)});}
+ if(duration){const begin=performance.now();await new Promise(resolve=>{const count=now=>{const progress=Math.min(1,(now-begin)/duration);bankNumber.textContent=String(startBank+Math.floor(amount*progress));riskNumber.textContent=String(recovered-Math.floor(recovered*progress)).padStart(2,'0');if(progress<1)requestAnimationFrame(count);else resolve()};requestAnimationFrame(count)});}
 }
 $('wake').addEventListener('click',async()=>{
  if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
