@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>NIGHTMARE Scorekeeper</title>
-<link rel="manifest" href="./manifest.webmanifest?v=icon2">
-<link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png?v=icon2">
-<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png?v=icon2">
+<link rel="manifest" href="./manifest.webmanifest?v=brand3">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32-white-orange.png?v=brand3">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180-white-orange.png?v=brand3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="NIGHTMARE">
 <style>
@@ -33,6 +33,9 @@ button:disabled{opacity:.4;cursor:default}
 header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
 .brand{font-family:Georgia,serif;font-weight:800;letter-spacing:.05em;font-size:clamp(22px,6vw,34px)}
 .brand span{color:var(--accent)}
+.brand{white-space:nowrap;letter-spacing:.025em}
+.brand-letter{display:inline-block;height:1.32em;width:.71em;vertical-align:-.23em;overflow:hidden}
+.brand span .brand-letter{width:.68em}
 .actions{display:flex;gap:8px}
 .topbtn{min-height:40px;padding:0 14px;border-radius:12px;border:1px solid #444;background:#1b1b1b;color:#f2f2f2;font-weight:800}
 .status{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 2px;min-height:24px}
@@ -174,7 +177,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
 <body>
 <div class="app">
   <header>
-    <div class="brand">NIGHT<span>MARE</span></div>
+    <div class="brand" aria-label="NIGHTMARE"><svg class="brand-letter" viewBox="130 130 510 950" aria-hidden="true" focusable="false"><image href="./icons/icon-512-white-orange.png" width="1280" height="1280"/></svg>IGHT<span><svg class="brand-letter" viewBox="640 130 485 950" aria-hidden="true" focusable="false"><image href="./icons/icon-512-white-orange.png" width="1280" height="1280"/></svg>ARE</span></div>
     <div class="actions">
       <button id="undo" class="topbtn" type="button">↶ Undo</button>
       <button id="settings" class="topbtn" type="button">⚙ Players</button>
