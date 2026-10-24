@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>NIGHTMARE Scorekeeper</title>
-<link rel="manifest" href="./manifest.webmanifest">
+<link rel="manifest" href="./app.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32-white-orange.png?v=brand3">
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180-white-orange.png?v=brand3">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -672,26 +672,38 @@ fit(); window.addEventListener('resize',fit,{passive:true}); if(window.visualVie
 render(); save();
 })();
 </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
-<script>(()=>{
-let pendingInstall=null;
+<script>
+(()=>{
 const button=document.getElementById('installApp'),status=document.getElementById('installStatus'),section=document.getElementById('installSection');
-const standalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-if(standalone()){section.hidden=true;return}
-window.addEventListener('beforeinstallprompt',event=>{
- event.preventDefault();pendingInstall=event;button.disabled=false;
- status.textContent='Install NIGHTMARE with its own icon and app window.';
-});
-window.addEventListener('appinstalled',()=>{pendingInstall=null;button.disabled=true;status.textContent='NIGHTMARE installed.';});
+let offer=null,requested=false,workerReady=false;
+const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const message=text=>{status.textContent=text};
+const refresh=()=>{
+ if(installed()){section.hidden=true;return}
+ button.disabled=!offer||!workerReady||requested;
+ if(requested)message('Installation requested from Chrome. Waiting for installation to finish; this is not yet a confirmed install.');
+ else if(offer&&workerReady)message('Ready to install NIGHTMARE as an app.');
+};
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();offer=event;refresh()});
+window.addEventListener('appinstalled',()=>{offer=null;requested=false;button.disabled=true;message('NIGHTMARE app installation completed.')});
 button.addEventListener('click',async()=>{
- if(!pendingInstall)return;
- const prompt=pendingInstall;pendingInstall=null;button.disabled=true;
- try{await prompt.prompt();const choice=await prompt.userChoice;status.textContent=choice.outcome==='accepted'?'Installation requested. Follow your device’s prompts.':'Installation dismissed. You can also use your browser’s install menu.'}
- catch{status.textContent='Installation could not start. Try your browser’s install menu.'}
+ if(!offer||!workerReady||requested)return;
+ const event=offer;offer=null;requested=true;refresh();
+ try{
+  await event.prompt();
+  const choice=await event.userChoice;
+  if(choice.outcome!=='accepted'){requested=false;message('App installation dismissed. Reload this page to check availability again.')}
+ }catch(error){requested=false;message('App installation failed to start: '+error.message)}
 });
-if(/iPad|iPhone|iPod/.test(navigator.userAgent)){status.textContent='In Safari, use Share → Add to Home Screen.'}
-else{setTimeout(()=>{if(!pendingInstall&&!standalone())status.textContent='Installation is not available right now. Check this browser’s install menu.'},10000)}
-})();</script>
+if(installed()){section.hidden=true;return}
+message('Checking app installation availability…');
+if(!('serviceWorker' in navigator)){message('This browser does not support the required offline app setup.');return}
+navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'})
+ .then(()=>navigator.serviceWorker.ready)
+ .then(()=>{workerReady=true;refresh();setTimeout(()=>{if(!offer&&!requested&&!installed())message('Chrome has not offered app installation. No shortcut will be requested by this button.');},8000)})
+ .catch(error=>message('App setup failed: '+error.message));
+})();
+</script>
 </body>
 </html>
 
