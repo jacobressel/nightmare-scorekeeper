@@ -189,6 +189,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
 .score-row>.thorn-toggle,.score-row>.bargain-toggle{position:absolute;right:0;top:0;width:58px;height:100%;z-index:2}
 #playerModal{align-items:start;justify-items:center;padding-top:calc(14px + env(safe-area-inset-top))}
 #playerModal>.modal{max-height:calc(var(--usable-height) - 28px - env(safe-area-inset-top))}
+.wake-flash.flashing{animation:wakeShellLong 1200ms linear both}.wake-flash.flashing::before{animation:wakeBackingLong 1200ms linear both}.wake-flash.flashing .wake-fracture{animation:radialCrackLong 1200ms linear both;animation-delay:var(--lag)}.wake-flash.flashing .impact{animation:impactFlash 1200ms linear both}.wake-flash.flashing .ice-plate,.wake-flash.flashing .ice-splinter{animation:glassFlightLong calc(1200ms - var(--delay)) cubic-bezier(.25,.05,.65,1) var(--delay) both}@keyframes wakeShellLong{0%,96%{opacity:1}100%{opacity:0}}@keyframes wakeBackingLong{0%,9%{opacity:1}21%,100%{opacity:0}}@keyframes radialCrackLong{0%{stroke-dashoffset:100;opacity:1}12%{stroke-dashoffset:0;opacity:1}25%,100%{stroke-dashoffset:0;opacity:0}}@keyframes glassFlightLong{0%,8%{opacity:1;stroke:transparent;transform:translate(0,0) rotate(0deg) rotateY(0deg) rotateX(0deg) scale(1)}18%{opacity:1;stroke:#101010;transform:translate(calc(var(--dx)*.035),calc(var(--dy)*.035)) rotate(calc(var(--rot)*.08)) scale(.99)}48%{opacity:1;stroke:#101010;transform:translate(calc(var(--dx)*.32),calc(var(--dy)*.32)) rotate(calc(var(--rot)*.35)) rotateY(calc(var(--flip)*.25)) scale(.94)}86%{opacity:1;transform:translate(calc(var(--dx)*.95),calc(var(--dy)*.95)) rotate(var(--rot)) rotateY(calc(var(--flip)*.65)) scale(.85)}100%{opacity:1;transform:translate(calc(var(--dx)*1.25),calc(var(--dy)*1.25)) rotate(var(--rot)) rotateY(var(--flip)) rotateX(var(--tilt)) scale(.8)}}.corruption-smoke{position:fixed;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle,#f0c5a099 0%,#a5a0a088 35%,#6b606055 58%,transparent 75%);filter:blur(4px);pointer-events:none;transform:translate(-50%,-50%)}
 </style>
 </head>
 <body>
@@ -592,14 +593,37 @@ function shatterCorruption(amount,rect){
  for(let i=0;i<18;i++){const shard=el('div','corruption-shard');shard.style.left=(c.x+(i%5-2)*5)+'px';shard.style.top=(c.y+(i%3-1)*5)+'px';layer.append(shard);const angle=i*Math.PI*2/18,range=28+(i*13)%60;const animation=shard.animate([{transform:'translate(-50%,-50%) rotate(0deg)',opacity:1},{transform:`translate(${Math.cos(angle)*range}px,${Math.sin(angle)*range+26}px) rotate(${i*41}deg) scale(.1)`,opacity:0}],{duration:650+(i%4)*35,easing:'ease-out',fill:'forwards'});animation.onfinish=()=>shard.remove();}
  return new Promise(resolve=>setTimeout(()=>{ghost.remove();resolve()},800));
 }
+function positionWakeFracture(rect){
+ const flash=$('wakeFlash'),bounds=flash.getBoundingClientRect(),w=bounds.width,h=bounds.height;
+ const c=centerOf(rect),cx=Math.max(2,Math.min(398,(c.x-bounds.left)*400/w)),cy=Math.max(2,Math.min(798,(c.y-bounds.top)*800/h));
+ const mapX=x=>x<=198?x*cx/198:cx+(x-198)*(400-cx)/202;
+ const mapY=y=>y<=390?y*cy/390:cy+(y-390)*(800-cy)/410;
+ const remap=value=>{let i=0;return value.replace(/-?\d+(?:\.\d+)?/g,n=>(i++%2?mapY(Number(n)):mapX(Number(n))).toFixed(2));};
+ flash.querySelectorAll('polygon').forEach((piece,index)=>{
+ const original=piece.dataset.originalPoints||(piece.dataset.originalPoints=piece.getAttribute('points'));
+ const mapped=remap(original);piece.setAttribute('points',mapped);
+ const nums=mapped.match(/-?\d+(?:\.\d+)?/g).map(Number);let x=0,y=0;for(let i=0;i<nums.length;i+=2){x+=nums[i];y+=nums[i+1]}x/=nums.length/2;y/=nums.length/2;
+ let dx=(x-cx)*w/400,dy=(y-cy)*h/800;const length=Math.hypot(dx,dy)||1,distance=Math.hypot(w,h)*1.3;
+ piece.style.setProperty('--dx',(dx/length*distance*400/w)+'px');piece.style.setProperty('--dy',(dy/length*distance*800/h)+'px');
+ });
+ flash.querySelectorAll('.wake-fracture').forEach(path=>{const original=path.dataset.originalPath||(path.dataset.originalPath=path.getAttribute('d'));path.setAttribute('d',remap(original))});
+ const impact=flash.querySelector('.impact');impact.setAttribute('cx',cx);impact.setAttribute('cy',cy);
+}
+async function smokeCorruptionToHalf(p){
+ const number=$('currentRisk').querySelector('b'),rect=number.getBoundingClientRect(),center=centerOf(rect),half=Math.floor(p.risk/2),layer=$('fxLayer');
+ number.animate([{opacity:1,filter:'blur(0px)',transform:'scale(1)'},{opacity:0,filter:'blur(7px)',transform:'scale(1.3)'}],{duration:280,easing:'ease-out'});
+ const puffs=[];for(let i=0;i<14;i++){const puff=el('div','corruption-smoke');puff.style.left=center.x+'px';puff.style.top=center.y+'px';layer.append(puff);puffs.push(puff);puff.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.4)'},{opacity:.9,offset:.2,transform:'translate(-50%,-70%) scale(1.3)'},{opacity:0,transform:`translate(${(i%2?1:-1)*(15+i*3)}px,${-40-(i%5)*12}px) scale(2.6)`}],{duration:700,delay:i*10,easing:'ease-out',fill:'forwards'});}
+ await new Promise(resolve=>setTimeout(resolve,260));number.textContent=String(half);number.animate([{opacity:0,filter:'blur(5px)',transform:'scale(1.2)'},{opacity:1,filter:'blur(0)',transform:'scale(1)'}],{duration:350,easing:'ease-out'});
+ await new Promise(resolve=>setTimeout(resolve,600));puffs.forEach(puff=>puff.remove());
+}
 async function safekeepWakeFX(p){
  const original=p.risk,recovered=Math.floor(original/2),lost=original-recovered,amount=wakeBank(p);
  const risk=$('currentRisk'),riskNumber=risk.querySelector('b');
  const bank=document.querySelector(`.tile[data-player-id="${CSS.escape(p.id)}"] .score.bank`),bankNumber=bank?.querySelector('b');
  const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
  if(reduced||!bank||!riskNumber||!bankNumber)return;
- // First destroy the lost share, keeping the protected share visible.
- if(lost>0){const rect=riskNumber.getBoundingClientRect();riskNumber.textContent=String(recovered);await shatterCorruption(lost,{left:rect.left,top:rect.top-25,width:rect.width,height:rect.height});}
+ // The fracture has already cleared and smoked the total down to its protected half.
+ riskNumber.textContent=String(recovered);
  // Then carry the protected share to the bank using the Feast stream.
  const startBank=p.bank,duration=amount>0?(feastFX(risk.getBoundingClientRect(),bank.getBoundingClientRect(),amount,p.id,bank)||0):0;
  if(duration){const begin=performance.now();await new Promise(resolve=>{const count=now=>{const progress=Math.min(1,(now-begin)/duration);bankNumber.textContent=String(startBank+Math.floor(amount*progress));riskNumber.textContent=String(recovered-Math.floor(recovered*progress));if(progress<1)requestAnimationFrame(count);else resolve()};requestAnimationFrame(count)});}
@@ -608,11 +632,15 @@ $('wake').addEventListener('click',async()=>{
  if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
  const p=active(),currentId=p.id;
  setTransition(true);
- const flash=$('wakeFlash');flash.hidden=false;flash.classList.remove('flashing');void flash.offsetWidth;flash.classList.add('flashing');
- const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
- await new Promise(resolve=>setTimeout(resolve,reduced?100:400));
+ const flash=$('wakeFlash'),reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ try{
+ flash.hidden=false;flash.classList.remove('flashing');positionWakeFracture($('currentRisk').querySelector('b').getBoundingClientRect());void flash.offsetWidth;flash.classList.add('flashing');
+ if(reduced){await new Promise(resolve=>setTimeout(resolve,100));}
+ else{await new Promise(resolve=>setTimeout(resolve,330));await Promise.all([new Promise(resolve=>setTimeout(resolve,870)),p.safekeep?smokeCorruptionToHalf(p):Promise.resolve()]);}
  flash.classList.remove('flashing');flash.hidden=true;
- try{if(p.safekeep)await safekeepWakeFX(p);}finally{
+ if(p.safekeep)await safekeepWakeFX(p);
+ }finally{
+ flash.classList.remove('flashing');flash.hidden=true;
  state.pulse='0';$('pulse').value='0';
  mutate(()=>{const player=state.players.find(x=>x.id===currentId);if(player){player.bank+=wakeBank(player);player.risk=0;}advanceTurn(currentId);},'WAKE');
  setTransition(false);
@@ -657,6 +685,7 @@ else{setTimeout(()=>{if(!pendingInstall&&!standalone())status.textContent='Insta
 })();</script>
 </body>
 </html>
+
 
 
 
