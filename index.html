@@ -173,6 +173,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
   .pulse-btn{font-size:19px}.action{font-size:16px}.pulse-adjust{grid-template-columns:34px minmax(0,1fr) 34px}.skip-btn{height:34px;padding:0 7px}
 }
 .power-badges{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}.power-badge{font-size:9px;font-weight:800;letter-spacing:.02em;background:#0009;color:#ffe1bd;border:1px solid #ffffff44;border-radius:5px;padding:2px 4px}.power-trigger{cursor:pointer}.power-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.power-option{width:100%;text-align:left;padding:12px;margin-top:10px;border-radius:11px;border:1px solid #555;background:#222;color:#fff}.power-option[aria-pressed="true"]{border-color:var(--accent);background:#49301e}.power-option strong{display:block;margin-bottom:4px}.power-option small{display:block;line-height:1.4;color:#ddd}.active strong{flex-wrap:wrap;row-gap:0}.active-power-note{flex-basis:100%;white-space:normal;display:block;font-size:10px;line-height:1.3;color:#ffe1bd;font-weight:600;margin-top:3px}.modal-actions button:disabled{opacity:.4}
+.active{grid-template-columns:auto minmax(0,1fr) auto auto}.active:has(.safekeep-shield[hidden]){grid-template-columns:minmax(0,1fr) auto auto}.safekeep-shield{display:grid;place-items:center;width:31px;height:39px;padding:2px;border:0;background:transparent;color:#aaa;border-radius:8px;flex:none}.safekeep-shield[hidden]{display:none}.safekeep-shield svg{width:28px;height:34px;fill:#242424;stroke:currentColor;stroke-width:2;stroke-linejoin:round}.shield-check{fill:none;opacity:.4}.safekeep-shield.enabled{color:#ffd39b;filter:drop-shadow(0 0 5px #f09b58);animation:safekeepGlow 1.8s ease-in-out infinite alternate}.safekeep-shield.enabled svg{fill:#69401b}.safekeep-shield.enabled .shield-check{opacity:1}.score-row.with-thorns{grid-template-columns:minmax(0,1fr) 52px}.thorn-toggle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid #ffffff33;border-radius:9px;background:#0004;color:#ddd;padding:4px 2px;min-height:48px}.thorn-toggle svg{width:19px;height:19px}.thorn-toggle span{font-size:8px;font-weight:900}.thorn-toggle small{font-size:8px}.thorn-toggle.enabled{color:#ffe1b3;background:#49301e;border-color:#f09b58;box-shadow:inset 0 0 9px #f09b5844}.power-badges{gap:2px}.power-badge{font-size:8px}.active-power-note{font-size:9px}@keyframes safekeepGlow{from{filter:drop-shadow(0 0 3px #f09b58)}to{filter:drop-shadow(0 0 8px #ffd39b)}}@media(prefers-reduced-motion:reduce){.safekeep-shield.enabled{animation:none}}
 </style>
 </head>
 <body>
@@ -189,7 +190,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
   <section class="bottom">
     <div class="turn-divider" aria-label="Active turn section">ACTIVE TURN</div>
     <div class="active">
-      <strong id="selected"></strong>
+      <button id="safekeepShield" class="safekeep-shield" type="button" aria-label="Activate Safekeep" aria-pressed="false"><svg viewBox="0 0 32 38" aria-hidden="true"><path d="M16 2 29 7v11c0 9-8 15-13 18C11 33 3 27 3 18V7Z"/><path class="shield-check" d="m9 18 5 5 10-11"/></svg></button><strong id="selected"></strong>
       <div class="current-risk" id="currentRisk"></div>
       <button id="skip" class="skip-btn" type="button">Skip Player</button>
     </div>
@@ -204,7 +205,6 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
   </section>
 </div>
 
-<div class="modal-bg" id="powerModal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="powerTitle"><h2 id="powerTitle">Powers</h2><p id="powerDesc"></p><button id="feastThorns" class="power-option" type="button" aria-pressed="false"><strong>Feast Thorns</strong><small>Persistent: Feast only at 20+ Corruption. Each Feast banks an extra 10. Tap again when removed.</small></button><button id="safekeep" class="power-option" type="button" aria-pressed="false"><strong>Safekeep</strong><small>Record current Corruption before exactly one final Stream. Safe: press FEAST. WAKE: bank half the recorded amount, rounded down.</small></button><p id="powerNote" style="margin-top:10px" aria-live="polite"></p><div class="modal-actions"><button id="powerDone" class="primary" type="button">Done</button></div></div></div>
 <div class="modal-bg" id="editModal" hidden>
   <div class="modal">
     <h2 id="editTitle">Edit score</h2>
@@ -418,22 +418,12 @@ function feastBlock(p){
  return '';
 }
 function wakeBank(p){return p.safekeep?Math.floor(p.safekeep.recorded/2)+feastBonus(p):0}
-let powerPlayerId=null;
-function openPowers(id){
+function toggleSafekeep(){
  if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
- const p=state.players.find(p=>p.id===id);if(!p)return;
- powerPlayerId=id;$('powerTitle').textContent=p.name+' · Powers';$('powerDesc').textContent=desc(p.demon)[1]+' · Resolve cards and Stream timing at the table.';
- $('feastThorns').hidden=p.demon!=='briarvex';$('feastThorns').setAttribute('aria-pressed',String(!!p.feastThorns));
- $('safekeep').hidden=p.demon==='gloam';$('safekeep').disabled=p.id!==state.selected;
- $('safekeep').setAttribute('aria-pressed',String(!!p.safekeep));
- $('powerNote').textContent=p.safekeep?'Safekeep recorded '+p.safekeep.recorded+' Corruption. WAKE banks '+wakeBank(p)+' Energy.':p.id!==state.selected?'Safekeep can only be activated during this player’s turn.':'Safekeep records the total when activated. Tap again to cancel an accidental activation.';
- $('powerModal').hidden=false;
+ const p=active();if(p.demon==='gloam')return;
+ mutate(()=>{p.safekeep=p.safekeep?null:{recorded:p.risk}});
 }
-$('feastThorns').addEventListener('click',()=>{const p=state.players.find(p=>p.id===powerPlayerId);if(!p||p.demon!=='briarvex'||transitioning)return;mutate(()=>{p.feastThorns=!p.feastThorns});openPowers(p.id)});
-$('safekeep').addEventListener('click',()=>{const p=state.players.find(p=>p.id===powerPlayerId);if(!p||p.id!==state.selected||p.demon==='gloam'||transitioning)return;mutate(()=>{p.safekeep=p.safekeep?null:{recorded:p.risk}});openPowers(p.id)});
-$('powerDone').addEventListener('click',()=>{$('powerModal').hidden=true});
-$('selected').setAttribute('role','button');$('selected').tabIndex=0;$('selected').setAttribute('aria-label','Active player Powers');$('selected').classList.add('power-trigger');
-$('selected').addEventListener('click',()=>openPowers(state.selected));$('selected').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPowers(state.selected)}});
+$('safekeepShield').addEventListener('click',toggleSafekeep);
 function render(){
   const roster=$('roster'); roster.replaceChildren(); roster.dataset.count=String(state.players.length);
   const flamingId=fireLeaderId();
@@ -443,20 +433,22 @@ function render(){
     tile.style.background=d[3].bg;
     tile.style.color=d[3].fg;
     const main=el('div','tile-main'); main.setAttribute('aria-label','Player '+p.name);
-    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); const badges=el('div','power-badges');if(p.demon==='briarvex'&&p.feastThorns)badges.append(el('span','power-badge','THORNS · FEAST 20+ · +10'));if(p.safekeep)badges.append(el('span','power-badge','SAFEKEEP · '+p.safekeep.recorded));if(badges.childNodes.length)main.append(badges);main.classList.add('power-trigger');main.setAttribute('role','button');main.tabIndex=0;main.setAttribute('aria-label',p.name+' Powers');main.addEventListener('click',()=>openPowers(p.id));main.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPowers(p.id)}});tile.append(main);
+    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); const badges=el('div','power-badges');if(p.demon==='briarvex'&&p.feastThorns)badges.append(el('span','power-badge','THORNS · FEAST 20+ · +10'));if(p.safekeep)badges.append(el('span','power-badge','SAFEKEEP · '+p.safekeep.recorded));if(badges.childNodes.length)main.append(badges);tile.append(main);
     if(p.id===state.selected) tile.append(el('div','selected-dot'));
     if(state.first100===p.id){const mark=el('div','first-mark','🔥 FIRST TO 100');tile.append(mark);}
     const scores=el('div','score-row');
     for(const [key,txt] of [['bank','Banked']]){
       const btn=el('button','score '+key); btn.type='button'; btn.dataset.scoreType=key; btn.innerHTML=`<span>${txt}</span><b>${p[key]}</b>`; btn.addEventListener('click',e=>{e.stopPropagation(); openEdit(p.id,key)}); scores.append(btn);
     }
-    tile.append(scores); roster.append(tile);
+    if(p.demon==='briarvex'){
+ scores.classList.add('with-thorns');const thorn=el('button','thorn-toggle'+(p.feastThorns?' enabled':''));thorn.type='button';thorn.innerHTML=motifSvg('briarvex')+'<span>THORNS</span><small>20+ / +10</small>';thorn.setAttribute('aria-label','Feast Thorns for '+p.name);thorn.setAttribute('aria-pressed',String(!!p.feastThorns));thorn.title='Feast Thorns: require 20 Corruption and bank +10. Toggle off when removed.';thorn.disabled=!!state.lastFeeding?.complete;thorn.addEventListener('click',()=>{if(transitioning||state.lastFeeding?.complete)return;mutate(()=>{p.feastThorns=!p.feastThorns})});scores.append(thorn);
+ }tile.append(scores); roster.append(tile);
   }
   const p=active(), lead=top();
   document.querySelector('.active').style.setProperty('--demon-color',p.demon==='ossik'?'#F3C64C':desc(p.demon)[3].bg);
   document.querySelector('.active').style.setProperty('--demon-fill',p.demon==='ossik'?'rgba(232,177,28,.48)':'color-mix(in srgb, var(--demon-color) 30%, transparent)');
   $('selected').replaceChildren();const activeIcon=el('span','glyph');activeIcon.innerHTML=motifSvg(p.demon);$('selected').append(activeIcon,document.createTextNode(' '+p.name));if(p.feastThorns&&p.demon==='briarvex'||p.safekeep){const notes=[];if(p.feastThorns&&p.demon==='briarvex')notes.push('Thorns · Feast 20+ · +10');if(p.safekeep)notes.push('Safekeep '+p.safekeep.recorded+' · WAKE banks '+wakeBank(p));$('selected').append(el('small','active-power-note',notes.join(' / ')));}$('currentRisk').replaceChildren(document.createTextNode('CORRUPTION '),el('b','',String(p.risk)));$('currentRisk').setAttribute('role','button');$('currentRisk').setAttribute('tabindex','0');$('currentRisk').setAttribute('aria-label','Edit current player Corruption');
-  const finished=!!state.lastFeeding?.complete; $('feast').disabled=p.risk===0||finished||!!feastBlock(p);$('feast').title=feastBlock(p)||('Bank '+(p.risk+feastBonus(p))+' Energy');$('wake').title=p.safekeep?'Safekeep: bank '+wakeBank(p)+' Energy, then end turn':'Lose unbanked Corruption and end turn'; $('wake').disabled=finished; $('skip').disabled=finished; $('pulseBtn').disabled=finished; $('undo').disabled=!hist.length;
+  const finished=!!state.lastFeeding?.complete;const shield=$('safekeepShield');shield.hidden=p.demon==='gloam';shield.disabled=finished;shield.classList.toggle('enabled',!!p.safekeep);shield.setAttribute('aria-pressed',String(!!p.safekeep));shield.setAttribute('aria-label',p.safekeep?'Cancel Safekeep':'Activate Safekeep');shield.title=p.safekeep?'Safekeep active · recorded '+p.safekeep.recorded+' · WAKE banks '+wakeBank(p):'Safekeep · record current Corruption before one final Stream'; $('feast').disabled=p.risk===0||finished||!!feastBlock(p);$('feast').title=feastBlock(p)||('Bank '+(p.risk+feastBonus(p))+' Energy');$('wake').title=p.safekeep?'Safekeep: bank '+wakeBank(p)+' Energy, then end turn':'Lose unbanked Corruption and end turn'; $('wake').disabled=finished; $('skip').disabled=finished; $('pulseBtn').disabled=finished; $('undo').disabled=!hist.length;
   const status=$('status'); status.replaceChildren();
   const lf=state.lastFeeding; const trigger=state.players.find(p=>p.id===lf?.trigger);
   const main=el('strong','',lf?.complete?'LAST FEEDING COMPLETE':lf?(lf.phase==='pending'?`${trigger?.name||'Gloam'} triggered Last Feeding`: `🔥 LAST FEEDING · ${lf.queue.length} turn${lf.queue.length===1?'':'s'} left`):(lead.bank?`${lead.name} leads · ${lead.bank}`:'Race to 100'));
@@ -551,8 +543,8 @@ $('reset').addEventListener('click',()=>{if(transitioning||!confirm('Reset all p
 $('modeAdd').addEventListener('click',()=>{mode='add'; $('modeAdd').classList.add('active'); $('modeSet').classList.remove('active')});
 $('modeSet').addEventListener('click',()=>{mode='set'; $('modeSet').classList.add('active'); $('modeAdd').classList.remove('active')});
 $('editSave').addEventListener('click',editSave); $('editCancel').addEventListener('click',()=>{$('editModal').hidden=true}); $('amount').addEventListener('keydown',e=>{if(e.key==='Enter') editSave()});
-for(const id of ['editModal','playerModal','powerModal']) $(id).addEventListener('click',e=>{if(e.target===$(id)) $(id).hidden=true});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){ $('editModal').hidden=true; $('playerModal').hidden=true;$('powerModal').hidden=true; }});
+for(const id of ['editModal','playerModal']) $(id).addEventListener('click',e=>{if(e.target===$(id)) $(id).hidden=true});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){ $('editModal').hidden=true; $('playerModal').hidden=true; }});
 function fit(){const vv=window.visualViewport; const h=vv?vv.height:window.innerHeight; document.documentElement.style.setProperty('--usable-height',Math.floor(h)+'px');}
 fit(); window.addEventListener('resize',fit,{passive:true}); if(window.visualViewport) window.visualViewport.addEventListener('resize',fit,{passive:true});
 render(); save();
