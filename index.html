@@ -181,6 +181,14 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
 .score-row{height:clamp(36px,5.5vh,50px);min-height:0;align-items:stretch}.score-row>.score,.score-row>.thorn-toggle,.score-row>.bargain-toggle{height:100%;min-height:0;box-sizing:border-box}.score-row.with-thorns{grid-template-columns:minmax(0,1fr) 58px}.thorn-toggle{gap:1px;background:#0003;color:#c8b7a5;border-color:#ffffff24;box-shadow:none}.thorn-toggle span{font-size:9px;font-weight:900;line-height:1.25}.thorn-toggle.enabled{background:#f09b58;color:#241406;border-color:#ffd6a5;box-shadow:0 0 9px #f09b5855,inset 0 0 0 1px #ffe1b344}.bargain-toggle{display:flex;flex-direction:column;justify-content:center;align-items:center;line-height:1.15;padding:2px}.bargain-toggle svg{width:16px;height:16px;margin:0 auto 2px}.bargain-totals{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.bargain-total{min-width:0;background:#080808;border:1px solid #55455e;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 7px;text-align:center}.bargain-total label,.bargain-total>span{font-size:10px;letter-spacing:.04em;color:#cabbd3;font-weight:800;margin:0 0 8px}.bargain-total input{font-size:32px;font-weight:900;text-align:center;padding:0;border:0;border-radius:0;background:transparent;color:#fff;min-width:0;appearance:textfield}.bargain-total input::-webkit-inner-spin-button{appearance:none}.bargain-total.bonus{border-color:#be8b51;background:#342313}.bargain-total.bonus b{font-size:38px;line-height:1.1;color:#ffc786}.bargain-total.bonus small{font-size:11px;margin-top:3px;color:#f1cda4}
 .thorn-toggle small{font-size:8px;line-height:1.15;font-weight:600;white-space:nowrap}.thorn-toggle{gap:1px;padding:2px}
 .score-row,.score-row.with-thorns,.score-row.with-bargain{grid-template-columns:minmax(0,1fr) 58px}.player-setup-actions{margin-top:0;margin-bottom:12px}
+
+/* Full-width bank surfaces with a shared score axis and independent ability controls. */
+.score-row,.score-row.with-thorns,.score-row.with-bargain{display:block;position:relative}
+.score-row>.score.bank{width:100%;height:100%;padding:3px 67px 3px 3px;box-sizing:border-box;align-items:stretch}
+.score-row>.score.bank>span,.score-row>.score.bank>b{display:block;text-align:center;width:100%}
+.score-row>.thorn-toggle,.score-row>.bargain-toggle{position:absolute;right:0;top:0;width:58px;height:100%;z-index:2}
+#playerModal{align-items:start;justify-items:center;padding-top:calc(14px + env(safe-area-inset-top))}
+#playerModal>.modal{max-height:calc(var(--usable-height) - 28px - env(safe-area-inset-top))}
 </style>
 </head>
 <body>
