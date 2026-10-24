@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>NIGHTMARE Scorekeeper</title>
-<link rel="manifest" href="./manifest.webmanifest?v=brand3">
+<link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32-white-orange.png?v=brand3">
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180-white-orange.png?v=brand3">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -230,6 +230,11 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
       <button id="reset" type="button">New game</button>
       <button id="done" class="primary" type="button">Done</button>
     </div>
+    <section id="installSection" style="margin-top:18px;border-top:1px solid #363636;padding-top:14px">
+      <h2>App</h2>
+      <div class="modal-actions"><button id="installApp" type="button" disabled>Install NIGHTMARE</button></div>
+      <p id="installStatus" style="margin-top:10px" aria-live="polite">Waiting for this browser to offer installation.</p>
+    </section>
   </div>
 </div>
 
@@ -529,5 +534,24 @@ render(); save();
 })();
 </script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
+<script>(()=>{
+let pendingInstall=null;
+const button=document.getElementById('installApp'),status=document.getElementById('installStatus'),section=document.getElementById('installSection');
+const standalone=()=>window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+if(standalone()){section.hidden=true;return}
+window.addEventListener('beforeinstallprompt',event=>{
+ event.preventDefault();pendingInstall=event;button.disabled=false;
+ status.textContent='Install NIGHTMARE with its own icon and app window.';
+});
+window.addEventListener('appinstalled',()=>{pendingInstall=null;button.disabled=true;status.textContent='NIGHTMARE installed.';});
+button.addEventListener('click',async()=>{
+ if(!pendingInstall)return;
+ const prompt=pendingInstall;pendingInstall=null;button.disabled=true;
+ try{await prompt.prompt();const choice=await prompt.userChoice;status.textContent=choice.outcome==='accepted'?'Installation requested. Follow your device’s prompts.':'Installation dismissed. You can also use your browser’s install menu.'}
+ catch{status.textContent='Installation could not start. Try your browser’s install menu.'}
+});
+if(/iPad|iPhone|iPod/.test(navigator.userAgent)){status.textContent='In Safari, use Share → Add to Home Screen.'}
+else{setTimeout(()=>{if(!pendingInstall&&!standalone())status.textContent='Installation is not available right now. Check this browser’s install menu.'},10000)}
+})();</script>
 </body>
 </html>
