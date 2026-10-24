@@ -463,7 +463,7 @@ function feastFX(from,to,amount,playerId){
   },duration-100);
   return duration+16*22+80;
 }
-function addPulse(){if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;const raw=$('pulse').value.trim(); const n=Number(raw); state.pulse=raw; save(); if(raw===''||!Number.isSafeInteger(n)||n<=0){notify('Enter a positive whole number'); return;} const p=active(); mutate(()=>{p.risk+=n}, `${p.name} gained ${n}`); pulseFX(n)}
+function addPulse(){if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;const raw=$('pulse').value.trim(); const n=Number(raw); state.pulse=raw; save(); if(raw===''||!Number.isSafeInteger(n)||n<=0){notify('Enter a positive whole number'); return;} const p=active(); mutate(()=>{p.risk+=n}); pulseFX(n)}
 function undo(){if(transitioning||!hist.length) return; state=hist.pop(); $('victorySplash').hidden=true;lastSplashToken='';save(); $('pulse').value=state.pulse; render(); notify('Undone')}
 $('pulse').value=state.pulse; $('pulse').addEventListener('input',()=>{state.pulse=$('pulse').value; save()}); $('pulse').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault(); addPulse()}});
 $('pulseBtn').addEventListener('click',addPulse);
