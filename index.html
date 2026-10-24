@@ -172,6 +172,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
   .tile{padding:5px 6px}.glyph{width:20px;height:20px}.demon{font-size:9px}.score{min-height:36px;padding:3px}.score span{font-size:8px}.score b{font-size:16px}
   .pulse-btn{font-size:19px}.action{font-size:16px}.pulse-adjust{grid-template-columns:34px minmax(0,1fr) 34px}.skip-btn{height:34px;padding:0 7px}
 }
+.power-badges{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}.power-badge{font-size:9px;font-weight:800;letter-spacing:.02em;background:#0009;color:#ffe1bd;border:1px solid #ffffff44;border-radius:5px;padding:2px 4px}.power-trigger{cursor:pointer}.power-trigger:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.power-option{width:100%;text-align:left;padding:12px;margin-top:10px;border-radius:11px;border:1px solid #555;background:#222;color:#fff}.power-option[aria-pressed="true"]{border-color:var(--accent);background:#49301e}.power-option strong{display:block;margin-bottom:4px}.power-option small{display:block;line-height:1.4;color:#ddd}.active strong{flex-wrap:wrap;row-gap:0}.active-power-note{flex-basis:100%;white-space:normal;display:block;font-size:10px;line-height:1.3;color:#ffe1bd;font-weight:600;margin-top:3px}.modal-actions button:disabled{opacity:.4}
 </style>
 </head>
 <body>
@@ -203,6 +204,7 @@ transform-origin:bottom center;animation:flameWaver 4.1s ease-in-out infinite al
   </section>
 </div>
 
+<div class="modal-bg" id="powerModal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="powerTitle"><h2 id="powerTitle">Powers</h2><p id="powerDesc"></p><button id="feastThorns" class="power-option" type="button" aria-pressed="false"><strong>Feast Thorns</strong><small>Persistent: Feast only at 20+ Corruption. Each Feast banks an extra 10. Tap again when removed.</small></button><button id="safekeep" class="power-option" type="button" aria-pressed="false"><strong>Safekeep</strong><small>Record current Corruption before exactly one final Stream. Safe: press FEAST. WAKE: bank half the recorded amount, rounded down.</small></button><p id="powerNote" style="margin-top:10px" aria-live="polite"></p><div class="modal-actions"><button id="powerDone" class="primary" type="button">Done</button></div></div></div>
 <div class="modal-bg" id="editModal" hidden>
   <div class="modal">
     <h2 id="editTitle">Edit score</h2>
@@ -367,6 +369,7 @@ function beginLastFeeding(triggerId,offTurn=false){
   if(!pending){state.selected=challengeOrder[0]||triggerId; if(!challengeOrder.length)state.lastFeeding.complete=true;}
 }
 function advanceTurn(fromId){
+  const departing=state.players.find(p=>p.id===fromId);if(departing)departing.safekeep=null;
   const lf=state.lastFeeding;
   if(!lf){state.selected=nextPlayerId(fromId);return;}
   if(lf.complete)return;
@@ -408,6 +411,29 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch{}}
 function notify(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(timer);timer=setTimeout(()=>el.hidden=true,1300)}
 function mutate(fn,msg){hist.push(copy(state)); if(hist.length>60)hist.shift(); const preBanks=Object.fromEntries(state.players.map(p=>[p.id,p.bank])); const actingId=state.selected; fn(); recordCrossing(preBanks,actingId); save(); render(); if(msg)notify(msg)}
 function el(tag,cls,txt){const x=document.createElement(tag); if(cls)x.className=cls; if(txt!==undefined)x.textContent=txt; return x}
+function feastBonus(p){return p.demon==='briarvex'&&p.feastThorns?10:0}
+function feastBlock(p){
+ if(p.feastThorns&&p.demon==='briarvex'&&p.risk<20)return 'Feast Thorns requires at least 20 Corruption.';
+ if(state.lastFeeding?.phase==='challenge'&&p.bank<top().bank&&p.bank+p.risk+feastBonus(p)===top().bank)return 'A tied Feast is not allowed. Stream again!';
+ return '';
+}
+function wakeBank(p){return p.safekeep?Math.floor(p.safekeep.recorded/2)+feastBonus(p):0}
+let powerPlayerId=null;
+function openPowers(id){
+ if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
+ const p=state.players.find(p=>p.id===id);if(!p)return;
+ powerPlayerId=id;$('powerTitle').textContent=p.name+' · Powers';$('powerDesc').textContent=desc(p.demon)[1]+' · Resolve cards and Stream timing at the table.';
+ $('feastThorns').hidden=p.demon!=='briarvex';$('feastThorns').setAttribute('aria-pressed',String(!!p.feastThorns));
+ $('safekeep').hidden=p.demon==='gloam';$('safekeep').disabled=p.id!==state.selected;
+ $('safekeep').setAttribute('aria-pressed',String(!!p.safekeep));
+ $('powerNote').textContent=p.safekeep?'Safekeep recorded '+p.safekeep.recorded+' Corruption. WAKE banks '+wakeBank(p)+' Energy.':p.id!==state.selected?'Safekeep can only be activated during this player’s turn.':'Safekeep records the total when activated. Tap again to cancel an accidental activation.';
+ $('powerModal').hidden=false;
+}
+$('feastThorns').addEventListener('click',()=>{const p=state.players.find(p=>p.id===powerPlayerId);if(!p||p.demon!=='briarvex'||transitioning)return;mutate(()=>{p.feastThorns=!p.feastThorns});openPowers(p.id)});
+$('safekeep').addEventListener('click',()=>{const p=state.players.find(p=>p.id===powerPlayerId);if(!p||p.id!==state.selected||p.demon==='gloam'||transitioning)return;mutate(()=>{p.safekeep=p.safekeep?null:{recorded:p.risk}});openPowers(p.id)});
+$('powerDone').addEventListener('click',()=>{$('powerModal').hidden=true});
+$('selected').setAttribute('role','button');$('selected').tabIndex=0;$('selected').setAttribute('aria-label','Active player Powers');$('selected').classList.add('power-trigger');
+$('selected').addEventListener('click',()=>openPowers(state.selected));$('selected').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPowers(state.selected)}});
 function render(){
   const roster=$('roster'); roster.replaceChildren(); roster.dataset.count=String(state.players.length);
   const flamingId=fireLeaderId();
@@ -417,7 +443,7 @@ function render(){
     tile.style.background=d[3].bg;
     tile.style.color=d[3].fg;
     const main=el('div','tile-main'); main.setAttribute('aria-label','Player '+p.name);
-    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); tile.append(main);
+    const idrow=el('div','idrow'); const glyph=el('span','glyph');glyph.innerHTML=motifSvg(p.demon); const label=el('div','label'); label.append(el('div','name',p.name), el('div','demon',d[1])); idrow.append(glyph,label); main.append(idrow); const badges=el('div','power-badges');if(p.demon==='briarvex'&&p.feastThorns)badges.append(el('span','power-badge','THORNS · FEAST 20+ · +10'));if(p.safekeep)badges.append(el('span','power-badge','SAFEKEEP · '+p.safekeep.recorded));if(badges.childNodes.length)main.append(badges);main.classList.add('power-trigger');main.setAttribute('role','button');main.tabIndex=0;main.setAttribute('aria-label',p.name+' Powers');main.addEventListener('click',()=>openPowers(p.id));main.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPowers(p.id)}});tile.append(main);
     if(p.id===state.selected) tile.append(el('div','selected-dot'));
     if(state.first100===p.id){const mark=el('div','first-mark','🔥 FIRST TO 100');tile.append(mark);}
     const scores=el('div','score-row');
@@ -429,8 +455,8 @@ function render(){
   const p=active(), lead=top();
   document.querySelector('.active').style.setProperty('--demon-color',p.demon==='ossik'?'#F3C64C':desc(p.demon)[3].bg);
   document.querySelector('.active').style.setProperty('--demon-fill',p.demon==='ossik'?'rgba(232,177,28,.48)':'color-mix(in srgb, var(--demon-color) 30%, transparent)');
-  $('selected').replaceChildren();const activeIcon=el('span','glyph');activeIcon.innerHTML=motifSvg(p.demon);$('selected').append(activeIcon,document.createTextNode(' '+p.name));$('currentRisk').replaceChildren(document.createTextNode('CORRUPTION '),el('b','',String(p.risk)));$('currentRisk').setAttribute('role','button');$('currentRisk').setAttribute('tabindex','0');$('currentRisk').setAttribute('aria-label','Edit current player Corruption');
-  const finished=!!state.lastFeeding?.complete; $('feast').disabled=p.risk===0||finished; $('wake').disabled=finished; $('skip').disabled=finished; $('pulseBtn').disabled=finished; $('undo').disabled=!hist.length;
+  $('selected').replaceChildren();const activeIcon=el('span','glyph');activeIcon.innerHTML=motifSvg(p.demon);$('selected').append(activeIcon,document.createTextNode(' '+p.name));if(p.feastThorns&&p.demon==='briarvex'||p.safekeep){const notes=[];if(p.feastThorns&&p.demon==='briarvex')notes.push('Thorns · Feast 20+ · +10');if(p.safekeep)notes.push('Safekeep '+p.safekeep.recorded+' · WAKE banks '+wakeBank(p));$('selected').append(el('small','active-power-note',notes.join(' / ')));}$('currentRisk').replaceChildren(document.createTextNode('CORRUPTION '),el('b','',String(p.risk)));$('currentRisk').setAttribute('role','button');$('currentRisk').setAttribute('tabindex','0');$('currentRisk').setAttribute('aria-label','Edit current player Corruption');
+  const finished=!!state.lastFeeding?.complete; $('feast').disabled=p.risk===0||finished||!!feastBlock(p);$('feast').title=feastBlock(p)||('Bank '+(p.risk+feastBonus(p))+' Energy');$('wake').title=p.safekeep?'Safekeep: bank '+wakeBank(p)+' Energy, then end turn':'Lose unbanked Corruption and end turn'; $('wake').disabled=finished; $('skip').disabled=finished; $('pulseBtn').disabled=finished; $('undo').disabled=!hist.length;
   const status=$('status'); status.replaceChildren();
   const lf=state.lastFeeding; const trigger=state.players.find(p=>p.id===lf?.trigger);
   const main=el('strong','',lf?.complete?'LAST FEEDING COMPLETE':lf?(lf.phase==='pending'?`${trigger?.name||'Gloam'} triggered Last Feeding`: `🔥 LAST FEEDING · ${lf.queue.length} turn${lf.queue.length===1?'':'s'} left`):(lead.bank?`${lead.name} leads · ${lead.bank}`:'Race to 100'));
@@ -439,7 +465,7 @@ function render(){
   if(!splash.hidden){$('lastFeedingWho').textContent=(trigger?.name||'A player')+' has triggered Last Feeding';$('lastFeedingPoints').textContent=trigger?.bank+' BANKED';}
   if(finished)showVictory();
 }
-function renderSettings(){const holder=$('playerRows'); holder.replaceChildren(); state.players.forEach((p,i)=>{const row=el('div','player-row'); const left=el('div'); left.append(el('label','','Player '+(i+1))); const name=el('input'); name.value=p.name; name.maxLength=25; name.addEventListener('change',()=>mutate(()=>{p.name=name.value.trim()||('Player '+(i+1))})); left.append(name); const mid=el('div'); mid.append(el('label','','Demon')); const select=el('select'); DEMONS.forEach(d=>{const opt=el('option','',`${d[1]} · ${d[2]}`); opt.value=d[0]; select.append(opt)}); select.value=p.demon; select.addEventListener('change',()=>mutate(()=>{p.demon=select.value})); mid.append(select); const remove=el('button','remove','×'); remove.disabled=state.players.length===1; remove.addEventListener('click',()=>{mutate(()=>{state.players=state.players.filter(x=>x.id!==p.id); if(state.selected===p.id) state.selected=state.players[0].id; if(state.first100===p.id) state.first100=null; if(state.lastFeeding)state.lastFeeding=null;}); renderSettings();}); row.append(left,mid,remove); holder.append(row);}); $('add').disabled=state.players.length>=6;}
+function renderSettings(){const holder=$('playerRows'); holder.replaceChildren(); state.players.forEach((p,i)=>{const row=el('div','player-row'); const left=el('div'); left.append(el('label','','Player '+(i+1))); const name=el('input'); name.value=p.name; name.maxLength=25; name.addEventListener('change',()=>mutate(()=>{p.name=name.value.trim()||('Player '+(i+1))})); left.append(name); const mid=el('div'); mid.append(el('label','','Demon')); const select=el('select'); DEMONS.forEach(d=>{const opt=el('option','',`${d[1]} · ${d[2]}`); opt.value=d[0]; select.append(opt)}); select.value=p.demon; select.addEventListener('change',()=>mutate(()=>{p.demon=select.value;p.feastThorns=false;p.safekeep=null})); mid.append(select); const remove=el('button','remove','×'); remove.disabled=state.players.length===1; remove.addEventListener('click',()=>{mutate(()=>{state.players=state.players.filter(x=>x.id!==p.id); if(state.selected===p.id) state.selected=state.players[0].id; if(state.first100===p.id) state.first100=null; if(state.lastFeeding)state.lastFeeding=null;}); renderSettings();}); row.append(left,mid,remove); holder.append(row);}); $('add').disabled=state.players.length>=6;}
 function openEdit(id,key){const p=state.players.find(x=>x.id===id); if(!p) return; edit={id,key}; mode='add'; $('modeAdd').classList.add('active'); $('modeSet').classList.remove('active'); $('editTitle').textContent=key==='bank'?'Banked Energy':'At-risk Corruption'; $('editDesc').textContent=`${p.name} · Current: ${p[key]}`; $('amount').value=''; $('editModal').hidden=false;}
 function editSave(){if(transitioning||!edit) return; const raw=$('amount').value.trim(); if(raw===''||!Number.isSafeInteger(Number(raw))){notify('Enter a whole number'); return;} const n=Number(raw); if(mode==='set'&&n<0){notify('Total cannot be negative'); return;} const p=state.players.find(x=>x.id===edit.id); if(!p) return; mutate(()=>{p[edit.key]=Math.max(0, mode==='add'?p[edit.key]+n:n)}, `${p.name} updated`); $('editModal').hidden=true;}
 function centerOf(rect){return {x:rect.left+rect.width/2,y:rect.top+rect.height/2}}
@@ -490,9 +516,8 @@ function setTransition(on){transitioning=on;$('transitionLock').hidden=!on;}
 $('feast').addEventListener('click',()=>{
   if(transitioning||state.lastFeeding?.complete||!$('lastFeedingSplash').hidden)return;
   const p=active(); if(!p.risk)return;
-  const highest=top().bank;
-  if(state.lastFeeding?.phase==='challenge' && p.bank+p.risk===highest && p.bank<highest){notify('A tied Feast is not allowed. Stream again!');return;}
-  const currentId=p.id, amount=p.risk;
+  const blocked=feastBlock(p);if(blocked){notify(blocked);return;}
+  const currentId=p.id, amount=p.risk+feastBonus(p);
   const start=centerOf($('currentRisk').getBoundingClientRect());
   const targetEl=document.querySelector(`.tile[data-player-id="${CSS.escape(currentId)}"] .score.bank`);
   const end=targetEl?centerOf(targetEl.getBoundingClientRect()):null;
@@ -511,7 +536,7 @@ $('wake').addEventListener('click',()=>{
   const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(()=>{
     state.pulse='0';$('pulse').value='0';
-    mutate(()=>{const p=state.players.find(x=>x.id===currentId);if(p)p.risk=0;advanceTurn(currentId);},'WAKE');
+    mutate(()=>{const p=state.players.find(x=>x.id===currentId);if(p){p.bank+=wakeBank(p);p.risk=0;}advanceTurn(currentId);},'WAKE');
     flash.classList.remove('flashing');flash.hidden=true;
     setTransition(false);
   },reduced?100:400);
@@ -522,12 +547,12 @@ $('victoryClose').addEventListener('click',()=>{$('victorySplash').hidden=true;}
 $('settings').addEventListener('click',()=>{if(transitioning)return;$('playerModal').hidden=false; renderSettings()});
 $('done').addEventListener('click',()=>{$('playerModal').hidden=true});
 $('add').addEventListener('click',()=>{if(state.players.length>=6) return; const next={id:'p'+(index++), name:'Player '+(state.players.length+1), demon:DEMONS.find(d=>!state.players.some(p=>p.demon===d[0]))?.[0]||'grimjaw', bank:0, risk:0}; mutate(()=>{state.players.push(next);}); renderSettings();});
-$('reset').addEventListener('click',()=>{if(transitioning||!confirm('Reset all player scores?')) return; mutate(()=>{state.players.forEach(p=>{p.bank=0;p.risk=0}); state.first100=null;state.lastFeeding=null;state.selected=state.players[0].id;lastSplashToken='';$('victorySplash').hidden=true;}, 'New game'); $('playerModal').hidden=true});
+$('reset').addEventListener('click',()=>{if(transitioning||!confirm('Reset all player scores?')) return; mutate(()=>{state.players.forEach(p=>{p.bank=0;p.risk=0;p.feastThorns=false;p.safekeep=null}); state.first100=null;state.lastFeeding=null;state.selected=state.players[0].id;lastSplashToken='';$('victorySplash').hidden=true;}, 'New game'); $('playerModal').hidden=true});
 $('modeAdd').addEventListener('click',()=>{mode='add'; $('modeAdd').classList.add('active'); $('modeSet').classList.remove('active')});
 $('modeSet').addEventListener('click',()=>{mode='set'; $('modeSet').classList.add('active'); $('modeAdd').classList.remove('active')});
 $('editSave').addEventListener('click',editSave); $('editCancel').addEventListener('click',()=>{$('editModal').hidden=true}); $('amount').addEventListener('keydown',e=>{if(e.key==='Enter') editSave()});
-for(const id of ['editModal','playerModal']) $(id).addEventListener('click',e=>{if(e.target===$(id)) $(id).hidden=true});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){ $('editModal').hidden=true; $('playerModal').hidden=true; }});
+for(const id of ['editModal','playerModal','powerModal']) $(id).addEventListener('click',e=>{if(e.target===$(id)) $(id).hidden=true});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){ $('editModal').hidden=true; $('playerModal').hidden=true;$('powerModal').hidden=true; }});
 function fit(){const vv=window.visualViewport; const h=vv?vv.height:window.innerHeight; document.documentElement.style.setProperty('--usable-height',Math.floor(h)+'px');}
 fit(); window.addEventListener('resize',fit,{passive:true}); if(window.visualViewport) window.visualViewport.addEventListener('resize',fit,{passive:true});
 render(); save();
@@ -555,3 +580,4 @@ else{setTimeout(()=>{if(!pendingInstall&&!standalone())status.textContent='Insta
 })();</script>
 </body>
 </html>
+
